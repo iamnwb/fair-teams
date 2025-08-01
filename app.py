@@ -273,7 +273,7 @@ st.markdown('<div class="step-header">Step 3: Generate Teams</div>', unsafe_allo
 required = players_per_team * number_of_teams
 
 if not st.session_state.setup_confirmed:
-    st.info("✅ Complete Step 1 before proceeding.")
+    st.info("✅ Complete Step 2 before proceeding.")
 elif len(st.session_state.players) < required:
     missing = required - len(st.session_state.players)
     st.info(f"🧍 Need {missing} more player(s) to generate teams.")
