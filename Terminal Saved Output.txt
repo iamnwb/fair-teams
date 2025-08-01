@@ -1,0 +1,86 @@
+Last login: Fri Aug  1 15:03:48 on ttys000
+iamnwb@Nicks-MacBook-Air fair-teams % cd ~/fair-teams
+mkdir -p .streamlit
+iamnwb@Nicks-MacBook-Air fair-teams % nano .streamlit/secrets.toml
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+  UW PICO 5.09                                                                              File: .streamlit/secrets.toml                                                                              Modified  
+
+SUPABASE_URL = "https://hzazvbdhkcvqxpkzgznj.supabase.co"                                                                                                                                                       
+SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imh6YXp2YmRoa2N2cXhwa3pnem5qIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTQwNTg1MDcsImV4cCI6MjA2OTYzNDUwN30.RMM6DZffuLuCMQwDXODlzx$
+$ODlzxB2llroWKPqgQQl2_AYg68"
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+^G Get Help                       ^O WriteOut                       ^R Read File                      ^Y Prev Pg                        ^K Cut Text                       ^C Cur Pos                        
+^X Exit                           ^J Justify                        ^W Where is                       ^V Next Pg                        ^U UnCut Text                     ^T To Spell                       
