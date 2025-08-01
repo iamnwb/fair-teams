@@ -1,6 +1,5 @@
 import streamlit as st
 import random
-import math
 from datetime import datetime
 
 # ---------- CONFIG & STYLES ----------
@@ -13,14 +12,15 @@ st.markdown(
       .container { max-width: 1000px; margin:auto; padding:12px 16px; }
       .title { background: var(--card); padding:14px 16px; border-radius: var(--radius); display:flex; align-items:center; gap:12px; margin-bottom:8px; }
       .title h1 { margin:0; font-size:2rem; }
-      .step { margin-top:16px; }
+      .step { margin-top:24px; }
       .step-header { font-size:1.5rem; font-weight:700; margin-bottom:4px; }
       .subtle { color:#aaa; font-size:0.85rem; }
       .sep { height:4px; background:#d1d5db; border-radius:2px; margin:16px 0; }
-      .footer { margin-top:20px; font-size:0.7rem; color:#999; text-align:center; }
-      .flex-gap { display:flex; gap:12px; align-items:center; flex-wrap:wrap; }
-      .pill { background:#1f242b; padding:6px 12px; border-radius:999px; font-size:0.9rem; display:inline-block; }
-      .metric { font-size:1rem; }
+      .footer { margin-top:16px; font-size:0.7rem; color:#999; text-align:center; }
+      .pill { background:#1f242b; padding:8px 16px; border-radius:999px; font-size:0.9rem; display:inline-block; }
+      .whatsapp-box { border-radius:12px; background: #1f242b; padding:14px; }
+      .swap-info { background:#1f242b; padding:12px; border-radius:8px; }
+      .inline-gap > * { margin-right:12px; }
     </style>
     """,
     unsafe_allow_html=True,
@@ -56,7 +56,7 @@ SAVED_PLAYERS = [
     {"name": "Matt Field", "rating": 6, "is_gk": False, "position": "ATT"},
 ]
 
-# ---------- HELPERS ----------
+# ---------- UTILITIES ----------
 def team_strengths(teams):
     return [(sum(p["rating"] for p in team) / len(team)) if team else 0 for team in teams]
 
@@ -103,10 +103,10 @@ def find_best_swap(teams):
                         })
     return best, base_var
 
-# ---------- STEP 1: MATCH SETUP ----------
+# ---------- STEP 1 ----------
 st.markdown('<div class="step"><div class="step-header">Step 1: Match Setup</div></div>', unsafe_allow_html=True)
-c1, c2 = st.columns([2, 1], gap="small")
-with c1:
+col1, col2 = st.columns([2, 1], gap="small")
+with col1:
     mode = st.radio("Match format", ["5-a-side", "7-a-side", "8-a-side", "11-a-side", "Custom"], horizontal=True)
     if mode == "5-a-side":
         players_per_team = 5
@@ -117,8 +117,8 @@ with c1:
     elif mode == "11-a-side":
         players_per_team = 11
     else:
-        players_per_team = st.number_input("Players per team (custom)", min_value=3, value=7, step=1, key="custom_format")
-with c2:
+        players_per_team = st.number_input("Players per team (custom)", min_value=3, value=7, step=1)
+with col2:
     number_of_teams = st.number_input("Number of teams", min_value=2, value=2, step=1)
 total_needed = players_per_team * number_of_teams
 if not st.session_state.setup_confirmed:
@@ -128,48 +128,73 @@ else:
     st.markdown("<div class='subtle'>Setup confirmed.</div>", unsafe_allow_html=True)
 st.markdown('<div class="sep"></div>', unsafe_allow_html=True)
 
-# ---------- STEP 2: ADD PLAYERS ----------
+# ---------- STEP 2 ----------
 st.markdown('<div class="step"><div class="step-header">Step 2: Add Players</div></div>', unsafe_allow_html=True)
 if not st.session_state.setup_confirmed:
     st.info("Complete Step 1 first.")
 else:
     remaining = total_needed - len(st.session_state.players)
-    if remaining > 0:
-        avail = [p["name"] for p in SAVED_PLAYERS if p["name"] not in [x["name"] for x in st.session_state.players]]
-        sel_col, btn_col = st.columns([6, 1], gap="small")
-        with sel_col:
-            chosen = st.multiselect("Choose Players", options=avail)
-        with btn_col:
-            if chosen:
-                to_add = chosen[:remaining]
-                if st.button(f"Add ({len(to_add)})"):
-                    for name in to_add:
-                        pl = next(p for p in SAVED_PLAYERS if p["name"] == name)
-                        st.session_state.players.append(pl)
-        if len(chosen) > remaining:
-            st.error(f"Max reached: only {remaining} slot(s) left.")
-    else:
-        st.success("Target reached; cannot add more.")
 
+    # Saved picker
+    with st.expander("📦 Saved Players", expanded=True):
+        if remaining <= 0:
+            st.success("Target reached; cannot add more saved players.")
+        else:
+            added_names = {p["name"] for p in st.session_state.players}
+            available = [p for p in SAVED_PLAYERS if p["name"] not in added_names]
+            if not available:
+                st.markdown("All saved players already added.")
+            else:
+                st.markdown(f"Select up to {remaining} player(s) to add:")
+                grouped = {"GK": [], "DEF": [], "MID": [], "ATT": [], "Any": []}
+                for p in available:
+                    pos = p.get("position", "Any")
+                    if pos not in grouped:
+                        pos = "Any"
+                    grouped[pos].append(p)
+                picks = []
+                for section in ["GK", "DEF", "MID", "ATT", "Any"]:
+                    players_in_section = grouped[section]
+                    if not players_in_section:
+                        continue
+                    st.markdown(f"**{section}**")
+                    cols = st.columns(3)
+                    for idx, player in enumerate(players_in_section):
+                        col = cols[idx % 3]
+                        key = f"pick_{player['name']}"
+                        checked = col.checkbox(f"{player['name']}", key=key)
+                        if checked:
+                            picks.append(player)
+                # persistent add button
+                to_add = picks[:remaining] if remaining > 0 else []
+                disabled = remaining <= 0 or not picks
+                btn_label = f"Add Selected ({min(len(picks), remaining)})" if picks else "Add Selected (0)"
+                if st.button(btn_label, disabled=disabled):
+                    for pl in to_add:
+                        st.session_state.players.append(pl)
+                    for pl in to_add:
+                        st.session_state.pop(f"pick_{pl['name']}", None)
+
+    # Manual add
     with st.expander("➕ Add Player Manually", expanded=False):
         if len(st.session_state.players) < total_needed:
             with st.form("manual"):
                 name = st.text_input("Name")
-                pos_col, rating_col, gk_col = st.columns(3, gap="small")
+                pos_col, rating_col = st.columns(2, gap="small")
                 position = pos_col.selectbox("Position", ["DEF", "MID", "ATT", "GK", "Any"])
                 rating_val = rating_col.selectbox("Rating (1–10)", list(range(1, 11)), index=6)
-                is_gk_flag = gk_col.checkbox("GK", value=(position == "GK"))
                 if st.form_submit_button("Add"):
                     if name:
                         st.session_state.players.append({
                             "name": name,
                             "rating": rating_val,
-                            "is_gk": is_gk_flag,
+                            "is_gk": position == "GK",
                             "position": position,
                         })
         else:
             st.info("Manual add disabled; target met.")
 
+    # Current players
     if st.session_state.players:
         st.markdown("**Current Players**")
         for p in st.session_state.players:
@@ -178,7 +203,7 @@ else:
 
 st.markdown('<div class="sep"></div>', unsafe_allow_html=True)
 
-# ---------- STEP 3: GENERATE TEAMS ----------
+# ---------- STEP 3 ----------
 st.markdown('<div class="step"><div class="step-header">Step 3: Generate Teams</div></div>', unsafe_allow_html=True)
 if not st.session_state.setup_confirmed:
     st.info("Complete Step 1.")
@@ -206,25 +231,40 @@ else:
                 role = "GK" if p.get("is_gk") else ""
                 line = f"- {p['name']} ({role})" if role else f"- {p['name']}"
                 st.write(line)
+
         with st.expander("🔍 Suggested Best Swap", expanded=False):
-            best_swap, base_var = find_best_swap(st.session_state.teams)
-            if best_swap["i"] is not None:
-                ti, tj = best_swap["i"], best_swap["j"]
-                pi, pj = best_swap["pi"]["name"], best_swap["pj"]["name"]
-                st.markdown(
-                    f"Swap **{pi}** (Team {ti+1}) with **{pj}** (Team {tj+1}) reduces variance "
-                    f"from {base_var:.4f} → {best_swap['new_var']:.4f} (Δ {best_swap['delta']:.4f})"
-                )
-                if st.button("Apply suggested swap"):
-                    idx_i = next(i for i, p in enumerate(st.session_state.teams[ti]) if p["name"] == pi)
-                    idx_j = next(j for j, p in enumerate(st.session_state.teams[tj]) if p["name"] == pj)
-                    st.session_state.teams[ti][idx_i], st.session_state.teams[tj][idx_j] = (
-                        st.session_state.teams[tj][idx_j],
-                        st.session_state.teams[ti][idx_i],
-                    )
-                    st.success("Swap applied.")
+            if not st.session_state.teams:
+                st.markdown("Generate teams first.")
             else:
-                st.markdown("No beneficial single swap found.")
+                base_strengths = team_strengths(st.session_state.teams)
+                base_var = variance_of(base_strengths)
+                st.markdown(f"**Current team averages:** " +
+                            " / ".join([f"Team {i+1}: {s:.2f}" for i, s in enumerate(base_strengths)]))
+                st.markdown(f"**Current variance:** {base_var:.4f}")
+
+                best_swap, _ = find_best_swap(st.session_state.teams)
+                if best_swap["i"] is not None:
+                    ti, tj = best_swap["i"], best_swap["j"]
+                    pi, pj = best_swap["pi"]["name"], best_swap["pj"]["name"]
+                    st.markdown(
+                        f"Swap **{pi}** (Team {ti+1}) with **{pj}** (Team {tj+1}) reduces variance "
+                        f"from {base_var:.4f} → {best_swap['new_var']:.4f} (Δ {best_swap['delta']:.4f})"
+                    )
+                    if st.button("Apply suggested swap"):
+                        idx_i = next(i for i, p in enumerate(st.session_state.teams[ti]) if p["name"] == pi)
+                        idx_j = next(j for j, p in enumerate(st.session_state.teams[tj]) if p["name"] == pj)
+                        st.session_state.teams[ti][idx_i], st.session_state.teams[tj][idx_j] = (
+                            st.session_state.teams[tj][idx_j],
+                            st.session_state.teams[ti][idx_i],
+                        )
+                        new_strengths = team_strengths(st.session_state.teams)
+                        new_var = variance_of(new_strengths)
+                        st.success("Swap applied.")
+                        st.markdown(f"**New team averages:** " +
+                                    " / ".join([f"Team {i+1}: {s:.2f}" for i, s in enumerate(new_strengths)]))
+                        st.markdown(f"**New variance:** {new_var:.4f} (improved by {base_var - new_var:.4f})")
+                else:
+                    st.markdown("No beneficial single swap found.")
 
         # WhatsApp message
         msg_lines = []
@@ -237,23 +277,20 @@ else:
                 msg_lines.append(line)
             msg_lines.append("")
         whatsapp_msg = "\n".join(msg_lines)
-        st.markdown('<div class="sep"></div>', unsafe_allow_html=True)
+
+        st.markdown('<div style="margin-top:12px;"></div>', unsafe_allow_html=True)
+        st.markdown('<div class="sep" style="margin:6px 0 4px;"></div>', unsafe_allow_html=True)
         st.markdown("**📲 WhatsApp Message**")
-        st.text_area("WhatsApp message", whatsapp_msg, height=200, label_visibility="hidden")
-        st.markdown('<div class="sep"></div>', unsafe_allow_html=True)
+        st.text_area("WhatsApp message", whatsapp_msg, height=200, label_visibility="hidden", key="wa_msg")
 
 # ---------- RESET + FOOTER ----------
-st.markdown('<div style="margin-top:24px;"></div>', unsafe_allow_html=True)
-st.markdown('<div style="text-align:center;">', unsafe_allow_html=True)
-st.markdown("<div class='pill'>Need a fresh start?</div>", unsafe_allow_html=True)
+st.markdown('<div class="sep" style="margin:14px 0 6px;"></div>', unsafe_allow_html=True)
 if st.button("Reset All (Click Me Twice)"):
     st.session_state.players = []
     st.session_state.teams = []
     st.session_state.setup_confirmed = False
-    if "bib_team_idx" in st.session_state:
-        del st.session_state["bib_team_idx"]
-    st.experimental_rerun()
-st.markdown("</div>", unsafe_allow_html=True)
+    st.session_state.pop("bib_team_idx", None)
+
 year = datetime.now().year
 st.markdown(f'<div class="footer">Powered by FOFA.gpt © {year}</div>', unsafe_allow_html=True)
 st.markdown("</div>", unsafe_allow_html=True)
