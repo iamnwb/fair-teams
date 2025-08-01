@@ -55,6 +55,7 @@ SAVED_PLAYERS = [
     {"name": "Bell", "rating": 9, "is_gk": False, "position": "MID"},
     {"name": "Ky", "rating": 10, "is_gk": False, "position": "MID"},
     {"name": "Jon C", "rating": 7, "is_gk": False, "position": "DEF"},
+    {"name": "Ross", "rating": 8, "is_gk": False, "position": "MID"},
     {"name": "Jord", "rating": 9, "is_gk": False, "position": "DEF"},
     {"name": "Callum", "rating": 7, "is_gk": False, "position": "DEF"},
     {"name": "OB", "rating": 7, "is_gk": False, "position": "MID"},
