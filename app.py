@@ -2,6 +2,7 @@ import streamlit as st
 import random
 import math
 from datetime import datetime
+from streamlit_sortables import sort_items
 
 # ---------- CONFIG & STYLING ----------
 st.set_page_config(page_title="FOFA Team Generator", layout="centered")
@@ -21,17 +22,12 @@ st.markdown(
     ::selection { background: transparent; }
     textarea::selection { background: #555; color: #f1f3f8; }
 
-    /* tighter expander spacing */
     [data-testid="stExpander"] > div:first-child { padding: 6px 10px; }
     .stExpander { margin-bottom: 4px; }
 
-    /* eliminate gap between WhatsApp heading and text area */
     [data-testid="stMarkdown"] strong, [data-testid="stMarkdown"] b { margin-bottom:0 !important; line-height:1.1 !important; }
     textarea { margin-top:0 !important; }
-
-    /* reduce top padding of widget container just below WhatsApp heading */
     .stMarkdown + .stTextArea { padding-top:2px !important; }
-
     .stTextArea textarea { padding:8px !important; }
     </style>
     """,
@@ -55,7 +51,6 @@ SAVED_PLAYERS = [
     {"name": "Bell", "rating": 9, "is_gk": False, "position": "MID"},
     {"name": "Ky", "rating": 10, "is_gk": False, "position": "MID"},
     {"name": "Jon C", "rating": 7, "is_gk": False, "position": "DEF"},
-    {"name": "Ross", "rating": 8, "is_gk": False, "position": "MID"},
     {"name": "Jord", "rating": 9, "is_gk": False, "position": "DEF"},
     {"name": "Callum", "rating": 7, "is_gk": False, "position": "DEF"},
     {"name": "OB", "rating": 7, "is_gk": False, "position": "MID"},
@@ -75,6 +70,7 @@ st.session_state.setdefault("players", [])
 st.session_state.setdefault("teams", [])
 st.session_state.setdefault("setup_confirmed", False)
 st.session_state.setdefault("saved_select_idx", 0)
+st.session_state.setdefault("bib_team_idx", None)
 
 # ---------- UTILITIES ----------
 def team_strengths(teams):
@@ -273,7 +269,7 @@ st.markdown('<div class="step-header">Step 3: Generate Teams</div>', unsafe_allo
 required = players_per_team * number_of_teams
 
 if not st.session_state.setup_confirmed:
-    st.info("✅ Complete Step 2 before proceeding.")
+    st.info("✅ Complete Step 1 before proceeding.")
 elif len(st.session_state.players) < required:
     missing = required - len(st.session_state.players)
     st.info(f"🧍 Need {missing} more player(s) to generate teams.")
@@ -295,9 +291,32 @@ if st.session_state.teams:
         cols[i].metric(f"Team {i+1} Avg", f"{s:.2f}")
     cols[-1].markdown(f"**Variance:** {variance:.3f}")
 
-    if "bib_team_idx" not in st.session_state:
+    if st.session_state.bib_team_idx is None:
         st.session_state.bib_team_idx = random.randrange(len(st.session_state.teams))
 
+    # drag & drop reorder within each team
+    if len(st.session_state.teams) >= 1:
+        st.markdown("### ✋ Drag & Drop to Reorder Within Teams")
+        updated = False
+        new_teams = []
+        for i, team in enumerate(st.session_state.teams):
+            team_label = f"Team {i+1}"
+            prefix = "🎽 " if i == st.session_state.bib_team_idx else ""
+            st.markdown(f"**{prefix}{team_label}**")
+            names = [p["name"] for p in team]
+            reordered = sort_items(names, key=f"sortable_team_{i}")
+            if reordered != names:
+                updated = True
+                name_to_player = {p["name"]: p for p in team}
+                new_team = [name_to_player[n] for n in reordered]
+            else:
+                new_team = team
+            new_teams.append(new_team)
+        if updated:
+            st.session_state.teams = new_teams
+            st.success("Teams updated via drag-and-drop.")
+
+    # normal display (after reorder)
     for i, team in enumerate(st.session_state.teams):
         prefix = "🎽 " if i == st.session_state.bib_team_idx else ""
         st.markdown(f"### {prefix}Team {i+1}")
@@ -329,37 +348,6 @@ if st.session_state.teams:
                 st.success("Suggested swap applied.")
         else:
             st.markdown("No improving single-player swap found; current allocation is locally optimal.")
-
-    if len(st.session_state.teams) >= 2:
-        with st.expander("🛠 Manual Swap Between Any Two Teams", expanded=False):
-            team_choices = [f"Team {i+1}" for i in range(len(st.session_state.teams))]
-            t1 = st.selectbox("From team", team_choices, key="manual_swap_t1")
-            t2 = st.selectbox("With team", [c for c in team_choices if c != t1], key="manual_swap_t2")
-            ti = team_choices.index(t1)
-            tj = team_choices.index(t2)
-            col1, col2 = st.columns(2)
-            with col1:
-                player_i_name = st.selectbox(f"Player from {t1}", [p["name"] for p in st.session_state.teams[ti]], key="manual_swap_pi")
-            with col2:
-                player_j_name = st.selectbox(f"Player from {t2}", [p["name"] for p in st.session_state.teams[tj]], key="manual_swap_pj")
-
-            if st.button("Preview manual swap"):
-                pi_idx = next(i for i, p in enumerate(st.session_state.teams[ti]) if p["name"] == player_i_name)
-                pj_idx = next(j for j, p in enumerate(st.session_state.teams[tj]) if p["name"] == player_j_name)
-                new_teams = [list(t) for t in st.session_state.teams]
-                new_teams[ti][pi_idx], new_teams[tj][pj_idx] = new_teams[tj][pj_idx], new_teams[ti][pi_idx]
-                new_strengths = team_strengths(new_teams)
-                new_var = total_variance(new_strengths)
-                st.markdown(f"Current variance: {variance:.4f}")
-                st.markdown(f"Post-swap variance: {new_var:.4f}")
-                reduction = variance - new_var
-                st.markdown(f"Reduction: {reduction:.4f}")
-                if st.button("Apply manual swap"):
-                    st.session_state.teams[ti][pi_idx], st.session_state.teams[tj][pj_idx] = (
-                        st.session_state.teams[tj][pj_idx],
-                        st.session_state.teams[ti][pi_idx],
-                    )
-                    st.success("Manual swap applied.")
 
     message_lines = []
     for i, team in enumerate(st.session_state.teams):
