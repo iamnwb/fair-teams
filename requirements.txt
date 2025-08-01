@@ -1,3 +1,2 @@
 streamlit==1.47.1
 numpy
-git+https://github.com/ohtaman/streamlit-sortables.git@main
