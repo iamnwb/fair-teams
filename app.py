@@ -26,40 +26,23 @@ st.markdown(
 st.markdown('<div class="container">', unsafe_allow_html=True)
 
 # ---------- HEADER ----------
-st.markdown(
-    """
-    <style>
-      .header-center {
-        display: flex;
-        flex-direction: column;
-        align-items: center;
-        gap: 4px;
-        margin: 16px 0;
-      }
-      .title-text {
-        margin: 0;
-        font-size: 2.5rem;
-        font-weight: 700;
-        color: #fff;
-        line-height: 1;
-        text-align: center;
-      }
-    </style>
-    """,
-    unsafe_allow_html=True,
-)
-
 with st.container():
-    st.markdown('<div class="title-text">⚽ FOFA Team Generator ⚽</div>', unsafe_allow_html=True)
-    st.markdown("</div>", unsafe_allow_html=True)
+    st.markdown(
+        '<h1 class="title-text">⚽ Team Generator</h1>',
+        unsafe_allow_html=True
+    )
+
 # ---------- SESSION STATE ----------
 st.session_state.setdefault("players", [])
 st.session_state.setdefault("teams", [])
 st.session_state.setdefault("setup_confirmed", False)
 st.session_state.setdefault("bib_team_idx", None)
 
+# ---------- EMOJIS ----------
+team_emojis = ["🦅", "🐺", "🐯", "🐉"]
+random.shuffle(team_emojis)
+
 # ---------- SAVED PLAYERS ----------
-SAVED_PLAYERS = [
 SAVED_PLAYERS = [
     {"name": "Bell", "rating": 8, "is_gk": False, "position": "MID"},
     {"name": "Ky", "rating": 9, "is_gk": False, "position": "MID"},
@@ -86,12 +69,11 @@ SAVED_PLAYERS = [
     {"name": "Ed", "rating": 8, "is_gk": True, "position": "GK"},
     {"name": "Ize", "rating": 7, "is_gk": False, "position": "MID"},
     {"name": "Belcher", "rating": 5, "is_gk": False, "position": "MID"},
-    {"name": "Matty D", "rating": 7, "is_gk": False, "position": “MID”},
+    {"name": "Matty D", "rating": 7, "is_gk": False, "position": "MID"},
     {"name": "Salter", "rating": 4, "is_gk": False, "position": "DEF"},
-    {"name": "Hextell", "rating": 8, "is_gk": False, "position": “Mid”},
-    {"name": "Mitch", "rating": 6.5, "is_gk": False, "position": “MID”},
-    {"name": "Ross", "rating": 7.5, "is_gk": False, "position": “MID”},
-    {"name": "Freddie", "rating": 8, "is_gk": False, "position": “ATT”},
+    {"name": "Hextell", "rating": 8, "is_gk": False, "position": "MID"},
+    {"name": "Ross", "rating": 7.5, "is_gk": False, "position": "MID"},
+    {"name": "Freddie", "rating": 8, "is_gk": False, "position": "ATT"},
 ]
 
 # ---------- HELPERS ----------
@@ -197,8 +179,8 @@ else:
                         cols = st.columns(3)
                         for idx, player in enumerate(grouped[section]):
                             col = cols[idx % 3]
-                            key = f"pick_{player['name']}"
-                            checked = col.checkbox(f"{player['name']}", key=key)
+                            key = f"pick_{section}_{idx}_{player['name']}"
+                            checked = col.checkbox(player['name'], key=key)
                             if checked:
                                 picks.append(player)
 
@@ -209,14 +191,14 @@ else:
                     for pl in to_add:
                         st.session_state.players.append(pl)
                     for pl in to_add:
-                        st.session_state.pop(f"pick_{pl['name']}", None)
+                        st.session_state.pop(f"pick_{section}_{idx}_{pl['name']}", None)
 
     with st.expander("➕ Add Player Manually", expanded=False):
         if len(st.session_state.players) < total_needed:
             with st.form("manual"):
                 name = st.text_input("Name")
                 pos_col, rating_col = st.columns(2, gap="small")
-                position = pos_col.selectbox("Position", ["DEF", "MID", "ATT", "GK", "Any"])
+                position = pos_col.selectbox("Position", ["DEF", "MID", "ATT", "GK", "Any"] )
                 rating_val = rating_col.selectbox("Rating (1–10)", list(range(1, 11)), index=6)
                 if st.form_submit_button("Add"):
                     if name:
@@ -232,8 +214,14 @@ else:
     if st.session_state.players:
         st.markdown("**Current Players**")
         for p in st.session_state.players:
-            role = "GK" if p.get("is_gk") else p.get("position", "")
-            st.markdown(f"- {p['name']} ({role})")
+            if p.get("is_gk"):
+                role = "GK"
+            elif p.get("position") == "GK":
+                role = "Can play GK"
+            else:
+                role = ""
+            suffix = f" ({role})" if role else ""
+            st.markdown(f"- {p['name']}{suffix}")
 
 st.markdown('<div class="sep"></div>', unsafe_allow_html=True)
 
@@ -259,62 +247,57 @@ else:
             cols[i].metric(f"Team {i+1} Avg", f"{s:.2f}")
         cols[-1].markdown(f"**Variance:** {var:.3f}")
         for ti, team in enumerate(st.session_state.teams):
-            prefix = "🎽 " if ti == st.session_state.bib_team_idx else ""
+            prefix = f"{team_emojis[ti]} "
             st.markdown(f"### {prefix}Team {ti+1}")
             for p in team:
-                role = "GK" if p.get("is_gk") else ""
-                line = f"- {p['name']} ({role})" if role else f"- {p['name']}"
-                st.write(line)
+                if p.get("is_gk"):
+                    role = "GK"
+                elif p.get("position") == "GK":
+                    role = "Can play GK"
+                else:
+                    role = ""
+                suffix = f" ({role})" if role else ""
+                st.write(f"- {p['name']}{suffix}")
 
         with st.expander("🔍 Suggested Best Swap", expanded=False):
-            if not st.session_state.teams:
-                st.markdown("Generate teams first.")
+            base_strengths = team_strengths(st.session_state.teams)
+            base_var = variance_of(base_strengths)
+            best_swap, _ = find_best_swap(st.session_state.teams)
+            if best_swap['i'] is not None:
+                ti, tj = best_swap['i'], best_swap['j']
+                pi, pj = best_swap['pi']['name'], best_swap['pj']['name']
+                st.markdown(f"Swap **{pi}** (Team {ti+1}) with **{pj}** (Team {tj+1}) reduces variance from {base_var:.4f} → {best_swap['new_var']:.4f} (Δ {best_swap['delta']:.4f})")
+                if st.button("Apply suggested swap"):
+                    idx_i = next(idx for idx,p in enumerate(st.session_state.teams[ti]) if p['name']==pi)
+                    idx_j = next(idx for idx,p in enumerate(st.session_state.teams[tj]) if p['name']==pj)
+                    st.session_state.teams[ti][idx_i], st.session_state.teams[tj][idx_j] = st.session_state.teams[tj][idx_j], st.session_state.teams[ti][idx_i]
+                    new_str = team_strengths(st.session_state.teams)
+                    new_va = variance_of(new_str)
+                    st.success("Swap applied.")
+                    st.markdown("**New team averages:** " + " / ".join([f"Team {i+1}: {s:.2f}" for i,s in enumerate(new_str)]))
+                    st.markdown(f"**New variance:** {new_va:.4f} (improved by {base_var-new_va:.4f})")
             else:
-                base_strengths = team_strengths(st.session_state.teams)
-                base_var = variance_of(base_strengths)
-                st.markdown(f"**Current team averages:** " +
-                            " / ".join([f"Team {i+1}: {s:.2f}" for i, s in enumerate(base_strengths)]))
-                st.markdown(f"**Current variance:** {base_var:.4f}")
-
-                best_swap, _ = find_best_swap(st.session_state.teams)
-                if best_swap["i"] is not None:
-                    ti, tj = best_swap["i"], best_swap["j"]
-                    pi, pj = best_swap["pi"]["name"], best_swap["pj"]["name"]
-                    st.markdown(
-                        f"Swap **{pi}** (Team {ti+1}) with **{pj}** (Team {tj+1}) reduces variance "
-                        f"from {base_var:.4f} → {best_swap['new_var']:.4f} (Δ {best_swap['delta']:.4f})"
-                    )
-                    if st.button("Apply suggested swap"):
-                        idx_i = next(i for i, p in enumerate(st.session_state.teams[ti]) if p["name"] == pi)
-                        idx_j = next(j for j, p in enumerate(st.session_state.teams[tj]) if p["name"] == pj)
-                        st.session_state.teams[ti][idx_i], st.session_state.teams[tj][idx_j] = (
-                            st.session_state.teams[tj][idx_j],
-                            st.session_state.teams[ti][idx_i],
-                        )
-                        new_strengths = team_strengths(st.session_state.teams)
-                        new_var = variance_of(new_strengths)
-                        st.success("Swap applied.")
-                        st.markdown(f"**New team averages:** " +
-                                    " / ".join([f"Team {i+1}: {s:.2f}" for i, s in enumerate(new_strengths)]))
-                        st.markdown(f"**New variance:** {new_var:.4f} (improved by {base_var - new_var:.4f})")
-                else:
-                    st.markdown("No beneficial single swap found.")
+                st.markdown("No beneficial swap found.")
 
         # WhatsApp
-        msg_lines = []
-        for i, team in enumerate(st.session_state.teams):
-            prefix = "🎽 " if i == st.session_state.bib_team_idx else ""
-            msg_lines.append(f"{prefix}*Team {i+1}*")
+        msg = []
+        for i,team in enumerate(st.session_state.teams):
+            prefix = f"{team_emojis[i]} "
+            msg.append(f"{prefix}*Team {i+1}*")
             for p in team:
-                role = "GK" if p.get("is_gk") else ""
-                line = f"- {p['name']} ({role})" if role else f"- {p['name']}"
-                msg_lines.append(line)
-            msg_lines.append("")
-        whatsapp_msg = "\n".join(msg_lines)
-
+                if p.get("is_gk"):
+                    role = "GK"
+                elif p.get("position")=="GK":
+                    role = "Can play GK"
+                else:
+                    role = ""
+                suf = f" ({role})" if role else ""
+                msg.append(f"- {p['name']}{suf}")
+            msg.append("")
+        wa = "\n".join(msg)
         st.markdown('<div class="sep" style="margin:6px 0 4px;"></div>', unsafe_allow_html=True)
         st.markdown("**📲 WhatsApp Message**")
-        st.text_area("WhatsApp message", whatsapp_msg, height=200, label_visibility="hidden", key="wa_msg")
+        st.text_area("WhatsApp message", wa, height=200, key="wa_msg")
 
 # ---------- RESET + FOOTER ----------
 st.markdown('<div class="sep" style="margin:14px 0 6px;"></div>', unsafe_allow_html=True)
