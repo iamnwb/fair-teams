@@ -1,36 +1,57 @@
 import streamlit as st
 import random
+import os
+import base64
 from datetime import datetime
 
-# ---------- CONFIG & STYLES ----------
+# ---------- CONFIG & STYLE ----------
 st.set_page_config(page_title="FOFA Team Generator", layout="centered")
 st.markdown(
     """
     <style>
-      :root { --bg:#0f111a; --card:#1f242b; --radius:8px; --muted:#777; }
+      :root { --bg:#0f111a; --card:#1f242b; --radius:8px; }
       body { background: var(--bg); color: #f1f3f8; font-family: system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif; }
       .container { max-width: 1000px; margin:auto; padding:12px 16px; }
-      .title { background: var(--card); padding:14px 16px; border-radius: var(--radius); display:flex; align-items:center; gap:12px; margin-bottom:8px; }
-      .title h1 { margin:0; font-size:2rem; }
-      .step { margin-top:24px; }
-      .step-header { font-size:1.5rem; font-weight:700; margin-bottom:4px; }
+      .step-header { font-size:1.5rem; font-weight:700; margin-bottom:6px; }
       .subtle { color:#aaa; font-size:0.85rem; }
       .sep { height:4px; background:#d1d5db; border-radius:2px; margin:16px 0; }
       .footer { margin-top:16px; font-size:0.7rem; color:#999; text-align:center; }
-      .pill { background:#1f242b; padding:8px 16px; border-radius:999px; font-size:0.9rem; display:inline-block; }
       .whatsapp-box { border-radius:12px; background: #1f242b; padding:14px; }
-      .swap-info { background:#1f242b; padding:12px; border-radius:8px; }
-      .inline-gap > * { margin-right:12px; }
+      .title-text { margin:0; font-size:2rem; font-weight:700; color:#fff; }
+      .header { display:flex; align-items:center; gap:12px; margin:8px 0; }
     </style>
     """,
     unsafe_allow_html=True,
 )
 st.markdown('<div class="container">', unsafe_allow_html=True)
+
+# ---------- HEADER ----------
 st.markdown(
-    '<div class="title"><div style="font-size:2rem;">⚽</div><h1>FOFA Team Generator</h1></div>',
+    """
+    <style>
+      .header-center {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        gap: 4px;
+        margin: 16px 0;
+      }
+      .title-text {
+        margin: 0;
+        font-size: 2.5rem;
+        font-weight: 700;
+        color: #fff;
+        line-height: 1;
+        text-align: center;
+      }
+    </style>
+    """,
     unsafe_allow_html=True,
 )
 
+with st.container():
+    st.markdown('<div class="title-text">⚽ FOFA Team Generator ⚽</div>', unsafe_allow_html=True)
+    st.markdown("</div>", unsafe_allow_html=True)
 # ---------- SESSION STATE ----------
 st.session_state.setdefault("players", [])
 st.session_state.setdefault("teams", [])
@@ -39,8 +60,9 @@ st.session_state.setdefault("bib_team_idx", None)
 
 # ---------- SAVED PLAYERS ----------
 SAVED_PLAYERS = [
-    {"name": "Bell", "rating": 9, "is_gk": False, "position": "MID"},
-    {"name": "Ky", "rating": 10, "is_gk": False, "position": "MID"},
+SAVED_PLAYERS = [
+    {"name": "Bell", "rating": 8, "is_gk": False, "position": "MID"},
+    {"name": "Ky", "rating": 9, "is_gk": False, "position": "MID"},
     {"name": "Jon C", "rating": 7, "is_gk": False, "position": "DEF"},
     {"name": "Jord", "rating": 9, "is_gk": False, "position": "DEF"},
     {"name": "Callum", "rating": 7, "is_gk": False, "position": "DEF"},
@@ -48,15 +70,31 @@ SAVED_PLAYERS = [
     {"name": "Matts", "rating": 7, "is_gk": False, "position": "MID"},
     {"name": "Kie", "rating": 7, "is_gk": False, "position": "DEF"},
     {"name": "Cob", "rating": 7, "is_gk": False, "position": "MID"},
-    {"name": "Middle", "rating": 6, "is_gk": False, "position": "DEF"},
-    {"name": "Owen", "rating": 8, "is_gk": False, "position": "MID"},
+    {"name": "Mitch", "rating": 6, "is_gk": False, "position": "MID"},
+    {"name": "Owen", "rating": 9, "is_gk": False, "position": "MID"},
     {"name": "Ant", "rating": 7, "is_gk": True, "position": "ATT"},
-    {"name": "Stokes", "rating": 6, "is_gk": True, "position": "DEF"},
-    {"name": "Hannon", "rating": 6, "is_gk": False, "position": "MID"},
+    {"name": "Stokes", "rating": 5.5, "is_gk": True, "position": "DEF"},
+    {"name": "Hannon", "rating": 6.5, "is_gk": False, "position": "MID"},
     {"name": "Matt Field", "rating": 6, "is_gk": False, "position": "ATT"},
+    {"name": "J Burke", "rating": 5, "is_gk": True, "position": "DEF"},
+    {"name": "K-Don", "rating": 5.5, "is_gk": False, "position": "MID"},
+    {"name": "Smithy", "rating": 6, "is_gk": False, "position": "ATT"},
+    {"name": "Beaver", "rating": 7, "is_gk": False, "position": "DEF"},
+    {"name": "Tom Burke", "rating": 7, "is_gk": False, "position": "MID"},
+    {"name": "Tom Harris", "rating": 7, "is_gk": False, "position": "MID"},
+    {"name": "Graham", "rating": 6, "is_gk": False, "position": "DEF"},    
+    {"name": "Ed", "rating": 8, "is_gk": True, "position": "GK"},
+    {"name": "Ize", "rating": 7, "is_gk": False, "position": "MID"},
+    {"name": "Belcher", "rating": 5, "is_gk": False, "position": "MID"},
+    {"name": "Matty D", "rating": 7, "is_gk": False, "position": “MID”},
+    {"name": "Salter", "rating": 4, "is_gk": False, "position": "DEF"},
+    {"name": "Hextell", "rating": 8, "is_gk": False, "position": “Mid”},
+    {"name": "Mitch", "rating": 6.5, "is_gk": False, "position": “MID”},
+    {"name": "Ross", "rating": 7.5, "is_gk": False, "position": “MID”},
+    {"name": "Freddie", "rating": 8, "is_gk": False, "position": “ATT”},
 ]
 
-# ---------- UTILITIES ----------
+# ---------- HELPERS ----------
 def team_strengths(teams):
     return [(sum(p["rating"] for p in team) / len(team)) if team else 0 for team in teams]
 
@@ -135,37 +173,35 @@ if not st.session_state.setup_confirmed:
 else:
     remaining = total_needed - len(st.session_state.players)
 
-    # Saved picker
-    with st.expander("📦 Saved Players", expanded=True):
+    with st.expander("💾 Saved Players", expanded=True):
         if remaining <= 0:
-            st.success("Target reached; cannot add more saved players.")
+            st.success("Target reached; cannot add more.")
         else:
             added_names = {p["name"] for p in st.session_state.players}
             available = [p for p in SAVED_PLAYERS if p["name"] not in added_names]
             if not available:
                 st.markdown("All saved players already added.")
             else:
-                st.markdown(f"Select up to {remaining} player(s) to add:")
+                st.markdown(f"Choose up to {remaining} player(s) to add:")
                 grouped = {"GK": [], "DEF": [], "MID": [], "ATT": [], "Any": []}
                 for p in available:
                     pos = p.get("position", "Any")
                     if pos not in grouped:
                         pos = "Any"
                     grouped[pos].append(p)
+
                 picks = []
                 for section in ["GK", "DEF", "MID", "ATT", "Any"]:
-                    players_in_section = grouped[section]
-                    if not players_in_section:
-                        continue
-                    st.markdown(f"**{section}**")
-                    cols = st.columns(3)
-                    for idx, player in enumerate(players_in_section):
-                        col = cols[idx % 3]
-                        key = f"pick_{player['name']}"
-                        checked = col.checkbox(f"{player['name']}", key=key)
-                        if checked:
-                            picks.append(player)
-                # persistent add button
+                    if grouped.get(section):
+                        st.markdown(f"**{section}**")
+                        cols = st.columns(3)
+                        for idx, player in enumerate(grouped[section]):
+                            col = cols[idx % 3]
+                            key = f"pick_{player['name']}"
+                            checked = col.checkbox(f"{player['name']}", key=key)
+                            if checked:
+                                picks.append(player)
+
                 to_add = picks[:remaining] if remaining > 0 else []
                 disabled = remaining <= 0 or not picks
                 btn_label = f"Add Selected ({min(len(picks), remaining)})" if picks else "Add Selected (0)"
@@ -175,7 +211,6 @@ else:
                     for pl in to_add:
                         st.session_state.pop(f"pick_{pl['name']}", None)
 
-    # Manual add
     with st.expander("➕ Add Player Manually", expanded=False):
         if len(st.session_state.players) < total_needed:
             with st.form("manual"):
@@ -194,7 +229,6 @@ else:
         else:
             st.info("Manual add disabled; target met.")
 
-    # Current players
     if st.session_state.players:
         st.markdown("**Current Players**")
         for p in st.session_state.players:
@@ -266,7 +300,7 @@ else:
                 else:
                     st.markdown("No beneficial single swap found.")
 
-        # WhatsApp message
+        # WhatsApp
         msg_lines = []
         for i, team in enumerate(st.session_state.teams):
             prefix = "🎽 " if i == st.session_state.bib_team_idx else ""
@@ -278,7 +312,6 @@ else:
             msg_lines.append("")
         whatsapp_msg = "\n".join(msg_lines)
 
-        st.markdown('<div style="margin-top:12px;"></div>', unsafe_allow_html=True)
         st.markdown('<div class="sep" style="margin:6px 0 4px;"></div>', unsafe_allow_html=True)
         st.markdown("**📲 WhatsApp Message**")
         st.text_area("WhatsApp message", whatsapp_msg, height=200, label_visibility="hidden", key="wa_msg")
